@@ -1,0 +1,1006 @@
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    {% load static %}
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href={% static 'assets/vendor/bootstrap/css/bootstrap.min.css' %}>
+    <link href={% static 'assets/vendor/fonts/circular-std/style.css' %} rel="stylesheet">
+    <link rel="stylesheet" href={% static 'assets/libs/css/style.css' %}>
+    <link rel="stylesheet" href={% static 'assets/vendor/fonts/fontawesome/css/fontawesome-all.css' %}>
+    <link rel="stylesheet" href={% static 'assets/vendor/charts/chartist-bundle/chartist.css' %}>
+    <link rel="stylesheet" href={% static 'assets/vendor/charts/morris-bundle/morris.css' %}>
+    <link rel="stylesheet" href={% static 'assets/vendor/fonts/material-design-iconic-font/css/materialdesignicons.min.css' %}>
+    <link rel="stylesheet" href={% static 'assets/vendor/charts/c3charts/c3.css' %}>
+    <link rel="stylesheet" href={% static 'assets/libs/css/uploader.css' %}>
+    <link rel="stylesheet" href={% static 'assets/vendor/fonts/flag-icon-css/flag-icon.min.css' %}>
+    <link rel="stylesheet" href={% static 'assets/vendor/multi-select/css/multi-select.css' %}>
+    <link rel="stylesheet" href={% static 'assets/vendor/select2/css/select2.css' %}>
+    <link rel="stylesheet" href={% static 'assets/vendor/summernote/css/summernote-bs4.css' %}>
+    <script src={% static 'assets/vendor/jquery/jquery-3.3.1.min.js' %}></script>
+    <title></title>
+    <script>
+        window.onload = function (){
+            queryForUser();
+            getRecommend();
+
+
+            let jump1 = document.getElementById("jump_upload");
+            let jump2 = document.getElementById("jump_read");
+            let jump3 = document.getElementById("jump_recommend");
+
+            //遮罩层上传部分代码
+            // document.getElementById("upload").onclick=startup;
+            // document.getElementsByClassName("style_copyright_a")[0].onclick=showUploadDialog;
+            // document.getElementsByClassName("style_content_span")[0].onclick=hideUploadDialog;
+            // document.getElementsByClassName("style_content_span")[1].onclick=uploadFileToServer;
+
+            jump1.onclick = function () {
+                window.scrollTo({
+                    left: 0,
+                    top: document.getElementById("upload").offsetTop,
+                    behavior: "smooth"
+                });
+            };
+            jump2.onclick = function () {
+                window.scrollTo({
+                    left: 0,
+                    top: document.getElementById("read").offsetTop,
+                    behavior: "smooth"
+                });
+            };
+            jump3.onclick = function () {
+                window.scrollTo({
+                    left: 0,
+                    top: document.getElementById("recommend").offsetTop,
+                    behavior: "smooth"
+                });
+            };
+
+            let timer1 = null;
+            function startMove(destination,direction){
+                clearInterval(timer1);
+                let leftSlide = document.getElementsByClassName("nav-left-sidebar sidebar-dark")[0];
+                let wrapper = document.getElementsByClassName("dashboard-wrapper")[0];
+                timer1 = setInterval(function () {
+                    let speed = destination >= 0 ? 1 : -1;
+                    if (!direction && leftSlide.offsetLeft + speed <= destination || direction && leftSlide.offsetLeft + speed >= destination) {
+                        wrapper.style.marginLeft = leftSlide.offsetLeft + leftSlide.offsetWidth + "px";
+                        clearInterval(timer1);
+                    } else {
+                        wrapper.style.marginLeft = leftSlide.offsetLeft + leftSlide.offsetWidth + "px";
+                        if(Math.abs(destination - leftSlide.offsetLeft) > 30)
+                            speed = destination >= 0 ? 150 : -150;
+                        else {
+                            speed = destination >= 0 ? 1 : -1;
+                            speed *= Math.abs(destination - leftSlide.offsetLeft) / 7 * 5;
+                        }
+
+                        leftSlide.style.left = leftSlide.offsetLeft + speed + "px";
+                    }
+                }, 1)
+
+            }
+            if (!navigator.userAgent.match(/AppleWebKit.*Mobile.*/)){
+                let wrapper = document.getElementsByClassName("dashboard-wrapper")[0];
+                let leftSlide = document.getElementsByClassName("nav-left-sidebar sidebar-dark")[0];
+                wrapper.style.marginLeft = leftSlide.offsetLeft + leftSlide.offsetWidth  + "px";
+
+                // const sp = document.getElementsByTagName("span")[0];
+                // const oDiv = document.getElementById("div1");
+                leftSlide.onmouseover = function(){
+                    startMove(0,true);
+                }
+                leftSlide.onmouseout = function(){
+                    startMove(-(this.offsetWidth-45),false);
+                }
+            }
+            else{
+                let leftSlide = document.getElementsByClassName("nav-left-sidebar sidebar-dark")[0];
+                leftSlide.style.left = 0;
+
+            }
+        };
+        function jump(url) {
+            window.open(url);
+        }
+
+        function submitNote() {
+            let noteContent = document.getElementById("summernote");
+            if(noteContent.value ==''){
+                alert("干嘛上传空笔记啦！我拒绝！");
+                return ;
+            }
+            $.ajax({
+                //几个参数需要注意一下
+                type: "POST",//方法类型
+                dataType: "json",//预期服务器返回的数据类型
+                url: "/upload/" ,//url
+                data: $('#usrform').serialize(),
+                success: function (result) {
+                    let res = $.parseJSON(result, undefined);
+                    // console.log(result);//打印服务端返回的数据(调试用)
+                    if (res.resultCode == 200) {
+                        if(res.keys){
+                            alert("笔记上传成功，请选择关键词");
+                            $('#keywordModal').modal("show");
+                            let content = '';
+                            $("#keep-order").html("");
+                            for(let i = 0; i < res.keys.length; i++){
+                                content += '<option value="'+res.keys[i]+'">'+res.keys[i]+'</option>"';
+                            }
+                            $('#keep-order').html(content);
+                            $("#keep-order").multiSelect("destroy").multiSelect({ keepOrder: true });
+
+                        }
+                        else
+                            alert("你一定是传了什么奇怪的东西，导致没有关键词，但是就算你上传成功吧！");
+                        queryForUser();
+
+                    }
+
+                },
+                error : function() {
+                    alert("笔记上传异常！");
+                }
+            });
+        }
+        function queryForUser(){
+            let user = "{{userName}}";
+            let protrait = document.getElementById("protraitImg");
+            protrait.src = "/static/cloud/"+user+".jpg";
+            
+            $.ajax({
+                //几个参数需要注意一下
+                type: "GET",//方法类型
+                dataType: "json",//预期服务器返回的数据类型
+                url: "/queryForUser/" ,//url
+                success: function (result) {
+
+                    let res = $.parseJSON(result, undefined);
+                    let numRecoder = document.getElementById("numOfNote");
+                    numRecoder.innerText = res.num;
+                    let tableBody = document.getElementById("readTableBody");
+                    tableBody.innerHTML = "";
+                    let listOfNote = res.note;
+                    let content = "";
+                    for(let i = 0; i < 4 && i < res.num; i++) {
+                        content += '<tr style="cursor:pointer" href={% static 'pages/blank-page.html' %} onclick="readNoteAndTest('+listOfNote[i][0].note_id+')">' + "<td>"+(i+1)+"</td> <td></td> <td>" + listOfNote[i][0].note_name + "</td>" + "<td>" + listOfNote[i][0].note_id + "</td>" + "<td></td>" + "<td></td>" + "<td>" + listOfNote[i][0].submit_time + "</td>" + "<td>" + listOfNote[i][0].author_id + "</td>" + "<td>" + listOfNote[i][0].is_public + "</td> </tr>";
+                    }
+                    tableBody.innerHTML = content + tableBody.innerHTML;
+                    let modalBody = document.getElementById("modalTableBody");
+                    content = "";
+                    modalBody.innerHTML = "";
+                    for(let i = 0; i < res.num; i++) {
+                        content += '<tr style="cursor:pointer" href={% static 'pages/blank-page.html' %} onclick="readNoteAndTest('+listOfNote[i][0].note_id+')">' + "<td>"+(i+1)+"</td> <td>" + listOfNote[i][0].note_name + "</td>" + "<td>" + listOfNote[i][0].note_id + "</td>" + "<td></td>" + "<td></td>" + "<td>" + listOfNote[i][0].submit_time + "</td>" + "<td>" + listOfNote[i][0].author_id + "</td>" + "<td>" + listOfNote[i][0].is_public + "</td> </tr>";
+
+                    }
+                    modalBody.innerHTML = content + modalBody.innerHTML;
+
+                    let choice = Math.floor(Math.random()*res.num);
+                    choice = modalBody.getElementsByTagName("tr")[choice].getElementsByTagName("td")[2].innerText;
+                    document.getElementById("randomNum").innerText = choice;
+
+                    document.getElementById("randomTest").onclick = function () {
+                        let choice = 0;
+
+                        document.getElementById("spinner").style.display = 'block';
+                        let timer = setInterval(function(){
+                            choice = Math.floor(Math.random()*res.num);
+                            choice = modalBody.getElementsByTagName("tr")[choice].getElementsByTagName("td")[2].innerText;
+                            document.getElementById("randomNum").innerText = choice;
+                        },100);
+                        setTimeout(function () {
+                            clearInterval(timer);
+                            setTimeout(function () {
+                                window.location.href = '/read/'+choice;
+                            },500);
+                        },1000);
+
+                    }
+                    // return res.num;
+
+                },
+                error : function() {
+                    alert("更新信息异常");
+                }
+            });
+
+        }
+
+        function submitKeyword() {
+            $.ajax({
+                //几个参数需要注意一下
+                type: "POST",//方法类型
+                dataType: "json",//预期服务器返回的数据类型
+                url: "/save_keyword/" ,//url
+                data: $('#keywordForm').serialize(),
+                success: function (result) {
+                    console.log(result);//打印服务端返回的数据(调试用)
+                    if (result == 200) {
+                        queryForUser();
+                    }
+
+                },
+                error : function() {
+                    alert("关键词选取异常！");
+                }
+            });
+            alert("关键词选取完毕");
+            $('#keywordModal').modal("hide");
+            $('#uploadModal').modal("hide");
+        }
+
+        function readNoteAndTest(note_id){
+            window.location.href = '/read/'+note_id;
+        }
+
+        function getRecommend(){
+            $.ajax({
+                //几个参数需要注意一下
+                type: "GET",//方法类型
+                dataType: "json",//预期服务器返回的数据类型
+                url: "/rec/" ,//url
+
+                success: function (result) {
+                    let res = $.parseJSON(result, undefined);
+                    // alert(res);
+                    let tableBody = document.getElementById("recommendBody");
+                    tableBody.innerHTML = "";
+                    //update the four note show in the index
+                    let listOfNote = res.rec;
+                    // alert(listOfNote);
+                    let content = "";
+                    for(let i = 0; i < 4 && i < listOfNote.length; i++) {
+                        content += '<tr style="cursor:pointer" href={% static 'pages/blank-page.html' %} onclick="getPreview('+listOfNote[i][0].note_id+')" data-toggle="modal" data-target="#recommendModal">' + "<td>"+(i+1)+"</td> <td></td> <td>" + listOfNote[i][0].note_name + "</td>" + "<td>" + listOfNote[i][0].note_id + "</td>" + "<td></td>" + "<td></td>" + "<td>" + listOfNote[i][0].submit_time + "</td>" + "<td>" + listOfNote[i][0].author_id + "</td>" + "<td id='state"+listOfNote[i][0].note_id+"'>" + "未收藏" + "</td> </tr>";
+                    }
+                    tableBody.innerHTML = content + tableBody.innerHTML;
+
+
+
+                },
+                error : function() {
+                    alert("获取推荐信息异常");
+                }
+            });
+
+        }
+
+        function getPreview(noteId){
+            let recommendBody = document.getElementById("card-1");
+            let ider = document.getElementById("keep");
+            $.ajax({
+                type: "GET",
+                url: "/preview/"+noteId,
+
+                success: function (result) {
+                    recommendBody.innerHTML = result;
+                    ider.innerHTML += '<button id="keepButton" class="btn-primary float-right btn-sm" style="position: fixed;  right: 50px" onclick="uploadKeep('+noteId+')">收藏</button>';
+                },
+                error: function () {
+                    alert("获取预览信息异常");
+                }
+            });
+        }
+
+        function uploadKeep(nid){
+            $.ajax({
+                type: "GET",
+                url: "/keep_book/"+nid,
+                success: function (result) {
+                    queryForUser();
+                    document.getElementById("state"+nid).innerText = '已收藏';
+                    alert("收藏成功，可在您的笔记列表中查看");
+
+                },
+                error: function () {
+                    alert("收藏异常");
+                }
+            });
+
+        }
+        let clocked = false;
+        function clockIn() {
+            let day = document.getElementById("days");
+            if(!clocked){
+                day.innerText = (parseInt(day.innerText)+1).toString();
+                alert("签到成功");
+                clocked = true;
+            }
+            else{
+                alert("请勿重复签到");
+            }
+        }
+
+
+    </script>
+</head>
+
+<body>
+
+<!-- ============================================================== -->
+<!-- main wrapper -->
+<!-- ============================================================== -->
+<div class="dashboard-main-wrapper">
+    <!-- ============================================================== -->
+    <!-- navbar -->
+    <!-- ============================================================== -->
+    <div class="dashboard-header">
+        <nav class="navbar navbar-expand-lg bg-white fixed-top">
+            <a class="navbar-brand" href="index.html">L i t b o t</a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse " id="navbarSupportedContent">
+                <ul class="navbar-nav ml-auto navbar-right-top">
+                    <li class="nav-item">
+                        <div id="custom-search" class="top-search-bar">
+                            <input class="form-control" type="text" placeholder="Search..">
+                        </div>
+                    </li>
+                    <li class="nav-item dropdown notification">
+                        <a class="nav-link nav-icons" href="#" id="navbarDropdownMenuLink1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fas fa-fw fa-bell"></i> <span class="indicator"></span></a>
+                        <ul class="dropdown-menu dropdown-menu-right notification-dropdown">
+                            <li>
+                                <div class="notification-title"> Notification</div>
+                                <div class="notification-list">
+                                    <div class="list-group">
+                                        <a href="#" class="list-group-item list-group-item-action active">
+                                            <div class="notification-info">
+                                                <div class="notification-list-user-img"><img src={% static 'assets/images/avatar-2.jpg' %} alt="" class="user-avatar-md rounded-circle"></div>
+                                                <div class="notification-list-user-block"><span class="notification-list-user-name">Jeremy Rakestraw</span>accepted your invitation to join the team.
+                                                    <div class="notification-date">2 min ago</div>
+                                                </div>
+                                            </div>
+                                        </a>
+                                        <a href="#" class="list-group-item list-group-item-action">
+                                            <div class="notification-info">
+                                                <div class="notification-list-user-img"><img src={% static 'assets/images/avatar-3.jpg' %} alt="" class="user-avatar-md rounded-circle"></div>
+                                                <div class="notification-list-user-block"><span class="notification-list-user-name">John Abraham </span>is now following you
+                                                    <div class="notification-date">2 days ago</div>
+                                                </div>
+                                            </div>
+                                        </a>
+                                        <a href="#" class="list-group-item list-group-item-action">
+                                            <div class="notification-info">
+                                                <div class="notification-list-user-img"><img src={% static 'assets/images/avatar-4.jpg' %} alt="" class="user-avatar-md rounded-circle"></div>
+                                                <div class="notification-list-user-block"><span class="notification-list-user-name">Monaan Pechi</span> is watching your main repository
+                                                    <div class="notification-date">2 min ago</div>
+                                                </div>
+                                            </div>
+                                        </a>
+                                        <a href="#" class="list-group-item list-group-item-action">
+                                            <div class="notification-info">
+                                                <div class="notification-list-user-img"><img src={% static 'assets/images/avatar-5.jpg' %} alt="" class="user-avatar-md rounded-circle"></div>
+                                                <div class="notification-list-user-block"><span class="notification-list-user-name">Jessica Caruso</span>accepted your invitation to join the team.
+                                                    <div class="notification-date">2 min ago</div>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </div>
+                                </div>
+                            </li>
+                            <li>
+                                <div class="list-footer"> <a href="#">View all notifications</a></div>
+                            </li>
+                        </ul>
+                    </li>
+                    <li class="nav-item dropdown connection">
+                        <a class="nav-link" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> <i class="fas fa-fw fa-th"></i> </a>
+                        <ul class="dropdown-menu dropdown-menu-right connection-dropdown">
+                            <li class="connection-list">
+                                <div class="row">
+                                    <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12 col-12 ">
+                                        <a href="#" class="connection-item"><img src={% static 'assets/images/github.png' %} alt="" > <span>Github</span></a>
+                                    </div>
+                                    <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12 col-12 ">
+                                        <a href="#" class="connection-item"><img src={% static 'assets/images/dribbble.png' %} alt="" > <span>Dribbble</span></a>
+                                    </div>
+                                    <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12 col-12 ">
+                                        <a href="#" class="connection-item"><img src={% static 'assets/images/dropbox.png' %} alt="" > <span>Dropbox</span></a>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12 col-12 ">
+                                        <a href="#" class="connection-item"><img src={% static 'assets/images/bitbucket.png' %} alt=""> <span>Bitbucket</span></a>
+                                    </div>
+                                    <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12 col-12 ">
+                                        <a href="#" class="connection-item"><img src={% static 'assets/images/mail_chimp.png' %} alt="" ><span>Mail chimp</span></a>
+                                    </div>
+                                    <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12 col-12 ">
+                                        <a href="#" class="connection-item"><img src={% static 'assets/images/slack.png' %} alt="" > <span>Slack</span></a>
+                                    </div>
+                                </div>
+                            </li>
+                            <li>
+                                <div class="conntection-footer"><a href="#">More</a></div>
+                            </li>
+                        </ul>
+                    </li>
+                    <li class="nav-item dropdown nav-user">
+                        <a class="nav-link nav-user-img" href="#" id="navbarDropdownMenuLink2" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><img src={% static 'assets/images/avatar-1.jpg' %} alt="" class="user-avatar-md rounded-circle"></a>
+                        <div class="dropdown-menu dropdown-menu-right nav-user-dropdown" aria-labelledby="navbarDropdownMenuLink2">
+                            <div class="nav-user-info">
+                                <h5 class="mb-0 text-white nav-user-name">John Abraham </h5>
+                                <span class="status"></span><span class="ml-2">Available</span>
+                            </div>
+                            <a class="dropdown-item" href="#"><i class="fas fa-user mr-2"></i>Account</a>
+                            <a class="dropdown-item" href="#"><i class="fas fa-cog mr-2"></i>Setting</a>
+                            <a class="dropdown-item" href="#"><i class="fas fa-power-off mr-2"></i>Logout</a>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+    </div>
+    <!-- ============================================================== -->
+    <!-- end navbar -->
+    <!-- ============================================================== -->
+    <!-- ============================================================== -->
+    <!-- left sidebar -->
+    <!-- ============================================================== -->
+    <div class="nav-left-sidebar sidebar-dark"  >
+        <div class="menu-list">
+            <nav class="navbar navbar-expand-lg navbar-light">
+                <a class="d-xl-none d-lg-none" href="#">个人主页</a>
+                <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav flex-column">
+                        <li class="nav-divider">
+                            Menu
+                        </li>
+                        <li class="nav-item ">
+                            <a class="nav-link active" href="#" data-toggle="collapse" aria-expanded="false" data-target="#submenu-1" aria-controls="submenu-1"><i class="fa fa-fw fa-user-circle"></i>个人主页<span class="badge badge-success">6</span></a>
+                            <div id="submenu-1" class="collapse submenu" style="">
+                                <ul class="nav flex-column">
+                                    <li class="nav-item">
+                                        <ul class="nav flex-column">
+                                            <li class="nav-item">
+                                                <a class="nav-link" id="jump_upload" href="javascript:void(0)">笔记上传</a>
+                                            </li>
+                                            <li class="nav-item">
+                                                <a class="nav-link" id="jump_read" href="javascript:void(0)">笔记浏览</a>
+                                            </li>
+                                            <li class="nav-item">
+                                                <a class="nav-link" id="jump_recommend" href="javascript:void(0)">个性化推荐</a>
+                                            </li>
+                                        </ul>
+                                    </li>
+
+                                </ul>
+                            </div>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-toggle="collapse" aria-expanded="false" data-target="#submenu-5" aria-controls="submenu-5"><i class="fas fa-fw fa-table"></i>笔记档案</a>
+                            <div id="submenu-5" class="collapse submenu" style="">
+                                <ul class="nav flex-column">
+                                    <li class="nav-item">
+                                        <a class="nav-link" href="#">自创笔记</a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link" href="#">收藏笔记</a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </li>
+
+                    </ul>
+                </div>
+            </nav>
+        </div>
+    </div>
+    <!-- ============================================================== -->
+    <!-- end left sidebar -->
+    <!-- ============================================================== -->
+    <!-- ============================================================== -->
+    <!-- wrapper  -->
+    <!-- ============================================================== -->
+    <div class="dashboard-wrapper">
+        <div class="dashboard-ecommerce">
+            <div class="container-fluid dashboard-content ">
+                <!-- ============================================================== -->
+                <!-- pageheader  -->
+                <!-- ============================================================== -->
+                <div class="row">
+                    <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12 col-12">
+                        <div class="page-header">
+                            <h2 class="pageheader-title">{{userName}}的个人主页 </h2>
+                            <p class="pageheader-text">Nulla euismod urna eros, sit amet scelerisque torton lectus vel mauris facilisis faucibus at enim quis massa lobortis rutrum.</p>
+
+                        </div>
+                    </div>
+                    <!--modal-->
+                    <div class="modal fade bd-example-modal-lg" id="uploadModal" tabindex="-1" role="dialog" aria-labelledby="uploadModalLabel" aria-hidden="true">
+                        <div class="modal-dialog modal-lg" role="document">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="uploadModalLabel">笔记上传</h5>
+                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                        <span aria-hidden="true">×</span>
+                                    </button>
+                                </div>
+                                <div class="modal-body">
+                                    <form class="form" action="demo_form.asp" id="usrform" enctype="multipart/form-data" method="post">
+
+                                        <div style="margin-bottom: 10px; padding: 0" class="col-12">
+                                            <div class="form-group col-xl-4 col-lg-4 col-md-4 col-sm-12 col-12" style="padding: 0">
+                                                <!--                                                <label for="inputText" class="col-form-label">笔记名称</label>-->
+                                                <input name="noteName" id="inputText" type="text" class="form-control" form="usrform" placeholder="笔记名称" >
+                                            </div>
+                                        </div>
+                                        <div class="col-md-12 p-0">
+                                            <div class="form-group">
+                                                <label class="control-label sr-only" for="summernote">Descriptions </label>
+                                                <textarea class="form-control" id="summernote" name="editordata" rows="6" placeholder="Write Descriptions" ></textarea>
+                                            </div>
+                                        </div>
+                                        <div class="style_content_div col-12" style="padding: 0">
+                                            <div class="custom-file mb-3">
+                                                <input type="file" class="custom-file-input" id="customFile" onclick="alert('暂不支持直接文件上传')">
+                                                <label class="custom-file-label" for="customFile">请选择上传的文件</label>
+                                            </div>
+                                            <div class="col-6" style="padding: 0; position: relative">
+                                                <label class="custom-control custom-checkbox custom-control-inline" >
+                                                    <input type="checkbox" checked="" class="custom-control-input" form="usrform" name="shared"><span class="custom-control-label">是否分享</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                    </form>
+
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">取消上传</button>
+                                    <button type="button" class="btn btn-primary" form="usrform"  onclick="submitNote()">确认上传</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal fade bd-example-modal-lg" id="recommendModal" tabindex="-1" role="dialog" aria-labelledby="recommendModalLabel" aria-hidden="true">
+                        <div class="modal-dialog modal-lg" role="document">
+                            <div class="modal-content">
+                                <div class="modal-header" id="keep">
+                                    <h5 class="modal-title" id="recommendModalLabel">推荐预览</h5>
+                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                        <span aria-hidden="true">×</span>
+                                    </button>
+
+                                </div>
+                                <div class="modal-body">
+                                    <div class="card-body">
+<!--                                        <div class="tab-content" id="myTabContent">-->
+                                        <div class="tab-pane fade show active" id="card-1" role="tabpanel" aria-labelledby="card-tab-1">
+
+
+                                        </div>
+                                        <form id="keepId"></form>
+
+
+<!--                                        </div>-->
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+<!--                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">取消上传</button>-->
+<!--                                    <button type="button" class="btn btn-primary" form="usrform" onclick="submitNote()">确认上传</button>-->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal fade bd-example-modal-lg" id="listModal" tabindex="-1" role="dialog" aria-labelledby="listModalLabel" aria-hidden="true">
+                        <div class="modal-dialog modal-lg" role="document">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="listModalLabel">笔记目录</h5>
+                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                        <span aria-hidden="true">×</span>
+                                    </button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12 col-12 ">
+                                        <div class="card align-content-center">
+<!--                                            <h5 class="card-header">笔记档案</h5>-->
+                                            <div class="card-body">
+                                                <table class="table table-hover table-responsive">
+                                                    <thead class="bg-light">
+                                                    <tr class="border-0">
+                                                        <th class="border-0"> </th>
+                                                        <th class="border-0">笔记名称</th>
+                                                        <th class="border-0">笔记ID</th>
+                                                        <th class="border-0">笔记大小</th>
+                                                        <th class="border-0">笔记类别</th>
+                                                        <th class="border-0">最后修改时间</th>
+                                                        <th class="border-0">作者</th>
+                                                        <th class="border-0">笔记状态</th>
+                                                    </tr>
+                                                    </thead>
+
+                                                    <tbody id="modalTableBody">
+                                                        <!--wait for content-->
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+                                <div class="modal-footer">
+                                    <!--                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">取消上传</button>-->
+                                    <!--                                    <button type="button" class="btn btn-primary" form="usrform" onclick="submitNote()">确认上传</button>-->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal fade bd-example-modal-sm" id="keywordModal" tabindex="-1" role="dialog" aria-labelledby="keywordModalLabel" aria-hidden="true">
+                        <div class="modal-dialog modal-sm" role="document">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="keywordModalLabel">请选择该篇笔记的关键词：</h5>
+                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                        <span aria-hidden="true">×</span>
+                                    </button>
+                                </div>
+                                <div class="modal-body" style="padding: 0">
+                                    <div class="col-12 align-content-sm-center text-center" style="padding: 0">
+<!--                                        <span class="dashboard-spinner spinner-xl" ></span>-->
+                                        <form id="keywordForm">
+                                            <div class="card-body">
+
+                                                <select id='keep-order' multiple='multiple' form="keywordForm" name="keyword">
+
+                                                </select>
+                                            </div>
+                                        </form>
+                                    </div>
+
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                                    <button type="button" class="btn btn-primary" form="keywordForm" onclick="submitKeyword()">确认</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+                <!-- ============================================================== -->
+                <!-- end pageheader  -->
+                <!-- ============================================================== -->
+                <div class="ecommerce-widget">
+
+                    <div class="row">
+                        <div class="col-xl-4 col-lg-4 col-md-4 col-sm-12 col-12"  id="upload" style="cursor:pointer" data-toggle="modal" data-target="#uploadModal">
+                            <div class="card" style=" height: 95%" >
+                                <div class="card-body" >
+                                    <h5 class="text-muted">上传笔记</h5>
+                                    <p style="text-align: center"><img id="protraitImg" src={% static '/cloud/1.jpg' %} width="350px" class="img-responsive center-block col-xl-12"></p>
+
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xl-4 col-lg-4 col-md-4 col-sm-12 col-12" style="cursor:pointer" id="randomTest" onclick="randomTest()">
+                            <div class="card" style=" height: 95%">
+                                <div class="card-body" >
+                                    <h5 class="text-muted">随机自测</h5>
+                                    <div id="spinner" style="text-align:center; display: none"><span class="dashboard-spinner spinner-xxl"></span></div>
+                                    <div id="randomNum" style="font-size: 100px; text-align: center; color: black"></div>
+<!--                                    <div class="metric-value d-inline-block">-->
+<!--                                        <h1 class="mb-1">$12099</h1>-->
+<!--                                    </div>-->
+<!--                                    <div class="metric-label d-inline-block float-right text-success font-weight-bold">-->
+<!--                                        <span><i class="fa fa-fw fa-arrow-up"></i></span><span>5.86%</span>-->
+<!--                                    </div>-->
+                                </div>
+<!--                                <div id="sparkline-revenue2"></div>-->
+                            </div>
+                        </div>
+<!--                        <div class="col-xl-4 col-lg-4 col-md-4 col-sm-12 col-12" >-->
+<!--                            <div class="card" style="height: 95%">-->
+<!--                                <h5 class="card-header">个性肖像</h5>-->
+<!--                                <div class="card-body" style="width: 30rem">-->
+<!--                                    <p><img id="protraitImg" src={% static '/cloud/1.jpg' %} width="350px" class="img-responsive center-block"></p>-->
+<!--                                </div >-->
+<!--                           -->
+<!--                            </div>-->
+<!--                        </div>-->
+                        <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12 col-12">
+                            <div class="card border-3 border-top border-top-primary">
+                                <div class="card-body">
+                                    <h5 class="text-muted">笔记数量</h5>
+                                    <div class="metric-value d-inline-block">
+                                        <h1 class="mb-1" id="numOfNote">0</h1>
+                                    </div>
+<!--                                    <div class="metric-label d-inline-block float-right text-success font-weight-bold">-->
+<!--                                        <span class="icon-circle-small icon-box-xs text-success bg-success-light"><i class="fa fa-fw fa-arrow-up"></i></span><span class="ml-1">5.86%</span>-->
+<!--                                    </div>-->
+                                </div>
+                            </div>
+                            <div class="card border-3 border-top border-top-primary">
+                                <div class="card-body">
+                                    <h5 class="text-muted">被收藏</h5>
+                                    <div class="metric-value d-inline-block">
+                                        <h1 class="mb-1">6</h1>
+                                    </div>
+<!--                                    <div class="metric-label d-inline-block float-right text-success font-weight-bold">-->
+<!--                                        <span class="icon-circle-small icon-box-xs text-success bg-success-light"><i class="fa fa-fw fa-arrow-up"></i></span><span class="ml-1">5%</span>-->
+<!--                                    </div>-->
+                                </div>
+                            </div>
+                            <div class="card border-3 border-top border-top-primary" style="cursor: pointer" onclick="clockIn()">
+                                <div class="card-body">
+                                    <h5 class="text-muted">签到</h5>
+                                    <div class="metric-value d-inline-block">
+                                        <h1 class="mb-1" id="days">12</h1>
+                                    </div>
+<!--                                    <div class="metric-label d-inline-block float-right text-success font-weight-bold">-->
+<!--                                        <span class="icon-circle-small icon-box-xs text-success bg-success-light"><i class="fa fa-fw fa-arrow-up"></i></span><span class="ml-1">10%</span>-->
+<!--                                    </div>-->
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                    <div class="row">
+
+                        <!-- recent orders  -->
+                        <!-- ============================================================== -->
+                        <div class="col-xl-12 col-lg-12 col-md-6 col-sm-12 col-12" id="read">
+                            <div class="card" >
+                                <h2 class="card-header">笔记档案<a href="#" class="btn btn-outline-light float-right" data-toggle="modal" data-target="#listModal">查看更多</a></h2>
+
+<!--                                <tr>-->
+<!--                                    <td colspan="9"><a href="#" class="btn btn-outline-light float-right" data-toggle="modal" data-target="#listModal">查看更多</a></td>-->
+<!--                                </tr>-->
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table">
+                                            <thead class="bg-light">
+                                            <tr class="border-0">
+                                                <th class="border-0"> </th>
+                                                <th class="border-0">Image</th>
+                                                <th class="border-0">笔记名称</th>
+                                                <th class="border-0">笔记ID</th>
+                                                <th class="border-0">笔记大小</th>
+                                                <th class="border-0">笔记类别</th>
+                                                <th class="border-0">最后修改时间</th>
+                                                <th class="border-0">作者</th>
+                                                <th class="border-0">笔记状态</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody id="readTableBody">
+<!--                                            wait for add-->
+<!--                                                <tr>-->
+<!--                                                    <td colspan="9"><a href="#" class="btn btn-outline-light float-right" data-toggle="modal" data-target="#listModal">查看更多</a></td>-->
+<!--                                                </tr>-->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div class="row">
+
+                        <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12 col-12" id="recommend">
+                            <div class="card" >
+                                <h2 class="card-header">个性推荐</h2>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table">
+                                            <thead class="bg-light">
+                                            <tr class="border-0">
+                                                <th class="border-0"> </th>
+                                                <th class="border-0">Image</th>
+                                                <th class="border-0">笔记名称</th>
+                                                <th class="border-0">笔记ID</th>
+                                                <th class="border-0">笔记大小</th>
+                                                <th class="border-0">笔记类别</th>
+                                                <th class="border-0">最后修改时间</th>
+                                                <th class="border-0">作者</th>
+                                                <th class="border-0">笔记状态</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody id="recommendBody">
+
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                    </div>
+                    <div  >
+                        <div class="  justify-content-center">
+                            <!-- ============================================================== -->
+                            <!-- social source  -->
+                            <!-- ============================================================== -->
+                            <div class="card">
+<!--                                <h5 class="card-header"> Sales By Social Source</h5>-->
+                                <div class="card-body p-0" style="text-align: center">
+                                    <img class="img-responsive center-block col-xl-12 col-lg-12" src={% static 'assets/images/reader2.png' %} style="padding:0">
+<!--                                    <ul class="social-sales list-group list-group-flush">-->
+<!--                                        <li class="list-group-item social-sales-content"><span class="social-sales-icon-circle facebook-bgcolor mr-2"><i class="fab fa-facebook-f"></i></span><span class="social-sales-name">Facebook</span><span class="social-sales-count text-dark">120 Sales</span>-->
+<!--                                        </li>-->
+<!--                                        <li class="list-group-item social-sales-content"><span class="social-sales-icon-circle twitter-bgcolor mr-2"><i class="fab fa-twitter"></i></span><span class="social-sales-name">Twitter</span><span class="social-sales-count text-dark">99 Sales</span>-->
+<!--                                        </li>-->
+<!--                                        <li class="list-group-item social-sales-content"><span class="social-sales-icon-circle instagram-bgcolor mr-2"><i class="fab fa-instagram"></i></span><span class="social-sales-name">Instagram</span><span class="social-sales-count text-dark">76 Sales</span>-->
+<!--                                        </li>-->
+<!--                                        <li class="list-group-item social-sales-content"><span class="social-sales-icon-circle pinterest-bgcolor mr-2"><i class="fab fa-pinterest-p"></i></span><span class="social-sales-name">Pinterest</span><span class="social-sales-count text-dark">56 Sales</span>-->
+<!--                                        </li>-->
+<!--                                        <li class="list-group-item social-sales-content"><span class="social-sales-icon-circle googleplus-bgcolor mr-2"><i class="fab fa-google-plus-g"></i></span><span class="social-sales-name">Google Plus</span><span class="social-sales-count text-dark">36 Sales</span>-->
+<!--                                        </li>-->
+<!--                                    </ul>-->
+                                </div>
+<!--                                <div class="card-footer text-center">-->
+<!--                                    <a href="#" class="btn-primary-link">View Details</a>-->
+<!--                                </div>-->
+                            </div>
+                            <!-- ============================================================== -->
+                            <!-- end social source  -->
+                            <!-- ============================================================== -->
+                        </div>
+                        <div hidden class="col-xl-4 col-lg-6 col-md-6 col-sm-12 col-12">
+                            <!-- ============================================================== -->
+                            <!-- sales traffice source  -->
+                            <!-- ============================================================== -->
+                            <div class="card">
+                                <h5 class="card-header"> Sales By Traffic Source</h5>
+                                <div class="card-body p-0">
+                                    <ul class="traffic-sales list-group list-group-flush">
+                                        <li class="traffic-sales-content list-group-item "><span class="traffic-sales-name">Direct</span><span class="traffic-sales-amount">$4000.00  <span class="icon-circle-small icon-box-xs text-success ml-4 bg-success-light"><i class="fa fa-fw fa-arrow-up"></i></span><span class="ml-1 text-success">5.86%</span></span>
+                                        </li>
+                                        <li class="traffic-sales-content list-group-item"><span class="traffic-sales-name">Search<span class="traffic-sales-amount">$3123.00  <span class="icon-circle-small icon-box-xs text-success ml-4 bg-success-light"><i class="fa fa-fw fa-arrow-up"></i></span><span class="ml-1 text-success">5.86%</span></span>
+                                                </span>
+                                        </li>
+                                        <li class="traffic-sales-content list-group-item"><span class="traffic-sales-name">Social<span class="traffic-sales-amount ">$3099.00  <span class="icon-circle-small icon-box-xs text-success ml-4 bg-success-light"><i class="fa fa-fw fa-arrow-up"></i></span><span class="ml-1 text-success">5.86%</span></span>
+                                                </span>
+                                        </li>
+                                        <li class="traffic-sales-content list-group-item"><span class="traffic-sales-name">Referrals<span class="traffic-sales-amount ">$2220.00   <span class="icon-circle-small icon-box-xs text-danger ml-4 bg-danger-light"><i class="fa fa-fw fa-arrow-down"></i></span><span class="ml-1 text-danger">4.02%</span></span>
+                                                </span>
+                                        </li>
+                                        <li class="traffic-sales-content list-group-item "><span class="traffic-sales-name">Email<span class="traffic-sales-amount">$1567.00   <span class="icon-circle-small icon-box-xs text-danger ml-4 bg-danger-light"><i class="fa fa-fw fa-arrow-down"></i></span><span class="ml-1 text-danger">3.86%</span></span>
+                                                </span>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div class="card-footer text-center">
+                                    <a href="#" class="btn-primary-link">View Details</a>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- ============================================================== -->
+                        <!-- end sales traffice source  -->
+                        <!-- ============================================================== -->
+                        <!-- ============================================================== -->
+                        <!-- sales traffic country source  -->
+                        <!-- ============================================================== -->
+                        <div hidden class="col-xl-3 col-lg-12 col-md-6 col-sm-12 col-12">
+                            <div class="card">
+                                <h5 class="card-header">Sales By Country Traffic Source</h5>
+                                <div class="card-body p-0">
+                                    <ul class="country-sales list-group list-group-flush">
+                                        <li class="country-sales-content list-group-item"><span class="mr-2"><i class="flag-icon flag-icon-us" title="us" id="us"></i> </span>
+                                            <span class="">United States</span><span class="float-right text-dark">78%</span>
+                                        </li>
+                                        <li class="list-group-item country-sales-content"><span class="mr-2"><i class="flag-icon flag-icon-ca" title="ca" id="ca"></i></span><span class="">Canada</span><span class="float-right text-dark">7%</span>
+                                        </li>
+                                        <li class="list-group-item country-sales-content"><span class="mr-2"><i class="flag-icon flag-icon-ru" title="ru" id="ru"></i></span><span class="">Russia</span><span class="float-right text-dark">4%</span>
+                                        </li>
+                                        <li class="list-group-item country-sales-content"><span class=" mr-2"><i class="flag-icon flag-icon-in" title="in" id="in"></i></span><span class="">India</span><span class="float-right text-dark">12%</span>
+                                        </li>
+                                        <li class="list-group-item country-sales-content"><span class=" mr-2"><i class="flag-icon flag-icon-fr" title="fr" id="fr"></i></span><span class="">France</span><span class="float-right text-dark">16%</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div class="card-footer text-center">
+                                    <a href="#" class="btn-primary-link">View Details</a>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- ============================================================== -->
+                        <!-- end sales traffice country source  -->
+                        <!-- ============================================================== -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- ============================================================== -->
+        <!-- footer -->
+        <!-- ============================================================== -->
+        <div class="footer">
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-xl-6 col-lg-6 col-md-6 col-sm-12 col-12">
+                        Copyright &copy; 2020.Litbot All rights reserved.
+                    </div>
+                    <div class="col-xl-6 col-lg-6 col-md-6 col-sm-12 col-12">
+                        <div class="text-md-right footer-links d-none d-sm-block">
+                            <a href="javascript: void(0);">About</a>
+                            <a href="javascript: void(0);">Support</a>
+                            <a href="javascript: void(0);">Contact Us</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- ============================================================== -->
+        <!-- end footer -->
+        <!-- ============================================================== -->
+    </div>
+    <!-- ============================================================== -->
+    <!-- end wrapper  -->
+    <!-- ============================================================== -->
+</div>
+<!-- ============================================================== -->
+<!-- end main wrapper  -->
+<!-- ============================================================== -->
+<!-- Optional JavaScript -->
+<!-- jquery 3.3.1 -->
+<script src={% static 'assets/vendor/jquery/jquery-3.3.1.min.js' %}></script>
+<!-- bootstap bundle js -->
+<script src={% static 'assets/vendor/bootstrap/js/bootstrap.bundle.js' %}></script>
+<!-- slimscroll js -->
+<script src={% static 'assets/vendor/slimscroll/jquery.slimscroll.js' %}></script>
+<!-- main js -->
+<script src={% static 'assets/libs/js/main-js.js' %}></script>
+<script src={% static 'assets/libs/js/uploader.js' %}></script>
+<!-- chart chartist js -->
+<script src={% static 'assets/vendor/charts/chartist-bundle/chartist.min.js' %}></script>
+<!-- sparkline js -->
+<script src={% static 'assets/vendor/charts/sparkline/jquery.sparkline.js' %}></script>
+<!-- morris js -->
+<script src={% static 'assets/vendor/charts/morris-bundle/raphael.min.js' %}></script>
+<script src={% static 'assets/vendor/charts/morris-bundle/morris.js' %}></script>
+<!-- chart c3 js -->
+<script src={% static 'assets/vendor/charts/c3charts/c3.min.js' %}></script>
+<script src={% static 'assets/vendor/charts/c3charts/d3-5.4.0.min.js' %}></script>
+<script src={% static 'assets/vendor/charts/c3charts/C3chartjs.js' %}></script>
+<script src={% static 'assets/libs/js/dashboard-ecommerce.js' %}></script>
+<script src={% static 'assets/vendor/select2/js/select2.min.js' %}></script>
+<script src={% static 'assets/vendor/summernote/js/summernote-bs4.js' %}></script>
+
+<script src={% static 'assets/vendor/multi-select/js/jquery.multi-select.js' %}></script>
+<!--<script>-->
+<!--    $('#my-select, #pre-selected-options').multiSelect()-->
+<!--</script>-->
+
+<script>
+    // $('#keep-order').multiSelect({ keepOrder: true });
+
+
+</script>
+
+<script>
+    $('#optgroup').multiSelect({ selectableOptgroup: true });
+</script>
+
+<script>
+    $('#custom-headers').multiSelect({
+        selectableHeader: "<div class='custom-header'>Selectable items</div>",
+        selectionHeader: "<div class='custom-header'>Selection items</div>",
+        selectableFooter: "<div class='custom-header'>Selectable footer</div>",
+        selectionFooter: "<div class='custom-header'>Selection footer</div>"
+    });
+</script>
+
+<script>
+    $(document).ready(function() {
+        $('#summernote').summernote({
+            height: 300
+
+        });
+    });
+</script>
+
+</body>
+
+</html>
